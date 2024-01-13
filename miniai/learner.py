@@ -52,11 +52,12 @@ def to_cpu(x):
 
 # %% ../nbs/09_learner.ipynb 35
 class MetricsCB(Callback):
-    def __init__(self, *ms, **metrics):
+    def __init__(self, *ms, device=def_device, **metrics):
         for o in ms: metrics[type(o).__name__] = o
         self.metrics = metrics
         self.all_metrics = copy(metrics)
         self.all_metrics['loss'] = self.loss = Mean()
+#         self.all_metrics['loss'] = self.loss = Mean(device='cpu' if 'mps' in device else device)
 
     def _log(self, d): print(d)
     def before_fit(self, learn): learn.metrics = self
@@ -111,13 +112,18 @@ class ProgressCB(Callback):
         learn.dl.comment = f'{learn.loss:.3f}'
         if self.plot and hasattr(learn, 'metrics') and learn.training:
             self.losses.append(learn.loss.item())
-            if self.val_losses: self.mbar.update_graph([[fc.L.range(self.losses), self.losses],[fc.L.range(learn.epoch).map(lambda x: (x+1)*len(learn.dls.train)), self.val_losses]])
+            if self.val_losses: 
+                self.mbar.update_graph(
+                    [[fc.L.range(self.losses), self.losses],
+                     [fc.L.range(learn.epoch).map(lambda x: (x+1)*len(learn.dls.train)), self.val_losses]])
     
     def after_epoch(self, learn): 
         if not learn.training:
             if self.plot and hasattr(learn, 'metrics'): 
                 self.val_losses.append(learn.metrics.all_metrics['loss'].compute())
-                self.mbar.update_graph([[fc.L.range(self.losses), self.losses],[fc.L.range(learn.epoch+1).map(lambda x: (x+1)*len(learn.dls.train)), self.val_losses]])
+                self.mbar.update_graph(
+                    [[fc.L.range(self.losses), self.losses],
+                     [fc.L.range(learn.epoch+1).map(lambda x: (x+1)*len(learn.dls.train)), self.val_losses]])
 
 # %% ../nbs/09_learner.ipynb 48
 class with_cbs:
