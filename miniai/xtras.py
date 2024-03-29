@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['batch_tfrm', 'get_dls2', 'format_time', 'MetricsCB', 'ProgressCB', 'ActivationStats', 'MyNorm', 'get_cbs',
-           'get_sched', 'ConvBlock2', 'ResBlock']
+           'get_sched']
 
 # %% ../nbs/xtras.ipynb 4
 from time import time
@@ -209,25 +209,3 @@ def get_sched(epochs, lr, dls):
     tmax = epochs * len(dls.train)
     sched = partial(lr_scheduler.OneCycleLR, max_lr=lr, total_steps=tmax)
     return BatchSchedCB(sched)
-
-# %% ../nbs/xtras.ipynb 45
-class ConvBlock2(nn.Module):
-    def __init__(self, ni, nf, ks=3, stride=2, act=nn.ReLU, norm=nn.BatchNorm2d):
-        super().__init__()
-        self.conv1 = conv(ni, nf, ks=ks, stride=1, act=act, norm=norm)
-        self.conv2 = conv(nf, nf, ks=ks, stride=stride, act=False, norm=norm)
-    
-    def forward(self, x):
-        return self.conv2(self.conv1(x))
-
-# %% ../nbs/xtras.ipynb 46
-class ResBlock(nn.Module):
-    def __init__(self, ni, nf, ks=3, stride=2, act=nn.ReLU, norm=nn.BatchNorm2d):
-        super().__init__()
-        self.id_conv = fc.noop if ni==nf else conv(ni, nf, ks=1, stride=1, act=None, norm=None)
-        self.pool = fc.noop if stride==1 else nn.AvgPool2d(2, ceil_mode=True)
-        self.convs = ConvBlock2(ni, nf, ks=ks, stride=stride, act=act, norm=norm)
-        self.act = act()
-    
-    def forward(self, x):
-        return self.act(self.convs(x) + self.id_conv(self.pool(x)))
